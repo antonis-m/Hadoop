@@ -51,8 +51,7 @@ public class Popular_Keywords {
 		  
 	 public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
             
-		 	
-		 	String[] keyword = value.toString().split("\t")[1].split(" ");
+	 	String[] keyword = value.toString().split("\t")[1].split(" ");
 		 	for(String s : keyword){
 		 		if(!stop_words.contains(s)){
 	            	word.set(s);
@@ -74,24 +73,26 @@ public class Popular_Keywords {
      }        
 	
 	
-	public static class Map2 extends Mapper<LongWritable, Text, IntWritable, Text>{
+	public static class Map2 extends Mapper<LongWritable, Text, Text, Text>{
 		private Text word = new Text();
-		private IntWritable frequency = new IntWritable();
+		private Text frequency = new Text(); 
 		
 		public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException{
 		    String line[] = value.toString().split("\t");
 		    String new_key = line[0];
 		    word.set(new_key);
-		    frequency.set(Integer.parseInt(line[1].toString().trim()));
+		    frequency.set(line[1].toString().trim());
 			context.write(frequency, word);			
 		}
 	}
 	
-	public static class Reduce2 extends Reducer<IntWritable, Text, Text, IntWritable>{
-		public void reduce(IntWritable key, Iterable<Text> values, Context context)
-		          throws IOException, InterruptedException{			
-			for (Text k : values){	
-				context.write(k,key);
+	public static class Reduce2 extends Reducer< Text, Text, Text, IntWritable>{
+		public void reduce(Text key, Iterable<Text> values, Context context)
+		          throws IOException, InterruptedException{
+			IntWritable final_key = new IntWritable();
+			for (Text k : values){
+				final_key.set(Integer.parseInt(key.toString()));
+				context.write(k, final_key);
 			}
 		}
 	}
@@ -121,12 +122,12 @@ public class Popular_Keywords {
         Job job2 = new Job(conf, "popular_keywords");
 
         job2.setJarByClass(Popular_Keywords.class);
-        job2.setMapOutputKeyClass(IntWritable.class);
+        job2.setMapOutputKeyClass(Text.class);
         job2.setMapOutputValueClass(Text.class);
         job2.setOutputKeyClass(Text.class);
         job2.setOutputValueClass(IntWritable.class);        
         job2.setMapperClass(Map2.class);
-        //job2.setSortComparatorClass(LongWritable.DecreasingComparator.class);
+        job2.setSortComparatorClass(LongWritable.DecreasingComparator.class);
         job2.setReducerClass(Reduce2.class);        
         job2.setInputFormatClass(TextInputFormat.class);
         job2.setOutputFormatClass(TextOutputFormat.class); 
