@@ -72,7 +72,31 @@ public class Popular_Keywords {
             context.write(key, new IntWritable(sum));
         }
      }        
-     public static void main(String[] args) throws Exception {
+	
+	
+	public static class Map2 extends Mapper<LongWritable, Text, IntWritable, Text>{
+		private Text word = new Text();
+		private IntWritable frequency = new IntWritable();
+		
+		public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException{
+		    String line[] = value.toString().split("\t");
+		    String new_key = line[0];
+		    word.set(new_key);
+		    frequency.set(Integer.parseInt(line[1].toString().trim()));
+			context.write(frequency, word);			
+		}
+	}
+	
+	public static class Reduce2 extends Reducer<IntWritable, Text, Text, IntWritable>{
+		public void reduce(IntWritable key, Iterable<Text> values, Context context)
+		          throws IOException, InterruptedException{			
+			for (Text k : values){	
+				context.write(k,key);
+			}
+		}
+	}
+
+	public static void main(String[] args) throws Exception {
         Configuration conf = new Configuration();                
         Job job = new Job(conf, "popular_keywords");
 
@@ -94,14 +118,24 @@ public class Popular_Keywords {
         
         job.waitForCompletion(true); 
     	
-        if (stop_words.isEmpty())
-    		System.out.println("TO POULO MALAKA");
-        else
-        for (String s : stop_words){ 
-        		System.out.println(s);
-        	
-        }
+        Job job2 = new Job(conf, "popular_keywords");
+
+        job2.setJarByClass(Popular_Keywords.class);
+        job2.setMapOutputKeyClass(IntWritable.class);
+        job2.setMapOutputValueClass(Text.class);
+        job2.setOutputKeyClass(Text.class);
+        job2.setOutputValueClass(IntWritable.class);        
+        job2.setMapperClass(Map2.class);
+        //job2.setSortComparatorClass(LongWritable.DecreasingComparator.class);
+        job2.setReducerClass(Reduce2.class);        
+        job2.setInputFormatClass(TextInputFormat.class);
+        job2.setOutputFormatClass(TextOutputFormat.class); 
         
+        FileInputFormat.addInputPath(job2, new Path(args[1]));
+        FileOutputFormat.setOutputPath(job2, new Path(args[2]));
+        
+        job2.waitForCompletion(true); 
+                
     	 
      }        
    }
