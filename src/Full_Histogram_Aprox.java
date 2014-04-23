@@ -13,7 +13,6 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.conf.*;
 import org.apache.hadoop.io.*;
 import org.apache.hadoop.mapreduce.*;
-//import org.apache.hadoop.mapreduce.Reducer.Context;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
@@ -21,13 +20,13 @@ import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 
 
 
-
-public class Full_Histogram {
+public class Full_Histogram_Aprox {
  public static Set<String> stop_words = new HashSet<String>();
  
  
  public static class Map extends Mapper<LongWritable, Text, Text, IntWritable> {
       private final static IntWritable one = new IntWritable(1);
+      private final static int iterations = 1000;
       private static Set<Character> characters = new HashSet<Character>();
       private Text word = new Text(); 
       
@@ -87,8 +86,20 @@ public class Full_Histogram {
         				continue;
         		context.write(word, one);
         	}
-        	
         }
+        @Override
+        public void run(Context context) throws IOException, InterruptedException{
+        	setup(context);
+        	int count = 0 ;
+            while (context.nextKeyValue()) {
+                if(count++ < iterations){ // check if enough records has been processed already
+                    map(context.getCurrentKey(), context.getCurrentValue(), context);
+                }else{
+                    break;
+                }
+        }
+       }
+        
      }         
      public static class Reduce extends Reducer<Text, IntWritable, Text, IntWritable> { 
     	 public void reduce(Text key, Iterable<IntWritable> values, Context context)
@@ -104,14 +115,28 @@ public class Full_Histogram {
      
      public static class Map2 extends Mapper<LongWritable, Text, Text, IntWritable> {
     	 private static IntWritable number = new IntWritable();
+    	 private final static int iterations = 1000;
     	 private Text counter = new Text();
-    	 	public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
+    	 	public void map(LongWritable key, Text value, Context context) 
+    	 			throws IOException, InterruptedException {
     	 			String line = value.toString().split("\t")[1];
     	 		    int x = Integer.parseInt(line);
     	 			counter.set("total");
     	 			number.set(x);
     	 			context.write(counter, number);
     	 	}
+    	 	@Override
+            public void run(Context context) throws IOException, InterruptedException{
+            	setup(context);
+            	int count = 0 ;
+                while (context.nextKeyValue()) {
+                    if(count++ < iterations){ // check if enough records has been processed already
+                        map(context.getCurrentKey(), context.getCurrentValue(), context);
+                    }else{
+                        break;
+                    }
+            }
+           }
      }
      
      
@@ -128,12 +153,13 @@ public class Full_Histogram {
      
      public static void main(String[] args) throws Exception {
         Configuration conf = new Configuration();        
-        Job job = new Job(conf, "full_histogram");
+        Job job = new Job(conf, "full_histogram_aprox");
 
         Path hdfsPath = new Path("/user/root/input/english.stop");
         DistributedCache.addCacheFile(hdfsPath.toUri(), job.getConfiguration());
         
-        job.setJarByClass(Full_Histogram.class);
+        
+        job.setJarByClass(Full_Histogram_Aprox.class);
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(IntWritable.class);        
         job.setMapperClass(Map.class);
@@ -145,9 +171,9 @@ public class Full_Histogram {
         job.waitForCompletion(true);
 
      
-        Job job2 = new Job(conf, "full_histogram");
+        Job job2 = new Job(conf, "full_histogram_aprox");
 
-        job2.setJarByClass(Full_Histogram.class);
+        job2.setJarByClass(Full_Histogram_Aprox.class);
         job2.setOutputKeyClass(Text.class);
         job2.setOutputValueClass(IntWritable.class);        
         job2.setMapperClass(Map2.class);
@@ -160,8 +186,8 @@ public class Full_Histogram {
         job2.waitForCompletion(true);
         
         
-        Path path1 = new Path("/user/root/output/results_5_1/part1/part-r-00000");
-        Path path2 = new Path("/user/root/output/results_5_1/part2/part-r-00000");
+        Path path1 = new Path("/user/root/output/results_5_2_2/part1/part-r-00000");
+        Path path2 = new Path("/user/root/output/results_5_2_2/part2/part-r-00000");
         FileSystem fileSystem = FileSystem.get(new Configuration());
         BufferedReader bufferedReader1 = new BufferedReader(new InputStreamReader(fileSystem.open(path1)));
         BufferedReader bufferedReader2 = new BufferedReader(new InputStreamReader(fileSystem.open(path2)));
@@ -172,7 +198,7 @@ public class Full_Histogram {
         while ((line = bufferedReader1.readLine()) != null){
         	String lin[] = line.split("\t");
         	double percen = (Integer.parseInt(lin[1])/total)*100;
-        	lin[1] = Double.toString(percen).substring(0, 5);
+        	lin[1] = Double.toString(percen).substring(0, 4);
         	br.write(lin[0]+"\t"+lin[1]+"\n");
        }
         br.close();
