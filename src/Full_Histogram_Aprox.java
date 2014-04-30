@@ -178,6 +178,7 @@ public class Full_Histogram_Aprox {
         job2.setOutputValueClass(IntWritable.class);        
         job2.setMapperClass(Map2.class);
         job2.setCombinerClass(Reduce2.class);
+        job2.setNumReduceTasks(27);
         job2.setReducerClass(Reduce2.class);        
         job2.setInputFormatClass(TextInputFormat.class);
         job2.setOutputFormatClass(TextOutputFormat.class);        
@@ -185,9 +186,9 @@ public class Full_Histogram_Aprox {
         FileOutputFormat.setOutputPath(job2, new Path(args[2]));        
         job2.waitForCompletion(true);
         
-        
-        Path path1 = new Path("/user/root/output/results_5_2_2/part1/part-r-00000");
-        Path path2 = new Path("/user/root/output/results_5_2_2/part2/part-r-00000");
+        for (int i =0; i<27; i++ ){
+        Path path1 = new Path("/user/root/output/results_5_1_3/part1/part-r-00000");
+        Path path2 = new Path("/user/root/output/results_5_1_3/part2/part-r-00000");
         FileSystem fileSystem = FileSystem.get(new Configuration());
         BufferedReader bufferedReader1 = new BufferedReader(new InputStreamReader(fileSystem.open(path1)));
         BufferedReader bufferedReader2 = new BufferedReader(new InputStreamReader(fileSystem.open(path2)));
@@ -202,6 +203,6 @@ public class Full_Histogram_Aprox {
         	br.write(lin[0]+"\t"+lin[1]+"\n");
        }
         br.close();
-        
+      }  
      }        
    }

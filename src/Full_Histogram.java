@@ -138,6 +138,7 @@ public class Full_Histogram {
         job.setOutputValueClass(IntWritable.class);        
         job.setMapperClass(Map.class);
         job.setReducerClass(Reduce.class);        
+        job.setNumReduceTasks(27);
         job.setInputFormatClass(TextInputFormat.class);
         job.setOutputFormatClass(TextOutputFormat.class);        
         FileInputFormat.addInputPath(job, new Path(args[0]));
@@ -152,6 +153,7 @@ public class Full_Histogram {
         job2.setOutputValueClass(IntWritable.class);        
         job2.setMapperClass(Map2.class);
         job2.setCombinerClass(Reduce2.class);
+        
         job2.setReducerClass(Reduce2.class);        
         job2.setInputFormatClass(TextInputFormat.class);
         job2.setOutputFormatClass(TextOutputFormat.class);        
@@ -159,23 +161,43 @@ public class Full_Histogram {
         FileOutputFormat.setOutputPath(job2, new Path(args[2]));        
         job2.waitForCompletion(true);
         
-        
-        Path path1 = new Path("/user/root/output/results_5_1/part1/part-r-00000");
-        Path path2 = new Path("/user/root/output/results_5_1/part2/part-r-00000");
+        Path path1;
+        Path path2;
+        path2 = new Path("/user/root/output/results_5_1_1/part2/part-r-00000");
         FileSystem fileSystem = FileSystem.get(new Configuration());
-        BufferedReader bufferedReader1 = new BufferedReader(new InputStreamReader(fileSystem.open(path1)));
         BufferedReader bufferedReader2 = new BufferedReader(new InputStreamReader(fileSystem.open(path2)));
         double total = Integer.parseInt(bufferedReader2.readLine().split("\t")[1]);
         bufferedReader2.close();
         BufferedWriter br=new BufferedWriter(new OutputStreamWriter(fileSystem.create(path2, true)));
-        String line;
-        while ((line = bufferedReader1.readLine()) != null){
-        	String lin[] = line.split("\t");
-        	double percen = (Integer.parseInt(lin[1])/total)*100;
-        	lin[1] = Double.toString(percen).substring(0, 5);
-        	br.write(lin[0]+"\t"+lin[1]+"\n");
+        for(int i=0; i<27; i++){
+
+        	 if (i<10){
+        	 path1 = new Path("/user/root/output/results_5_1_1/part1/part-r-0000"+i);        	 
+             BufferedReader bufferedReader1 = new BufferedReader(new InputStreamReader(fileSystem.open(path1)));
+             
+             String line;
+             while ((line = bufferedReader1.readLine()) != null){
+             	String lin[] = line.split("\t");
+             	double percen = (Integer.parseInt(lin[1])/total)*100;
+             	lin[1] = Double.toString(percen).substring(0, 5);
+             	br.write(lin[0]+"\t"+lin[1]+"\n");
+            }
+           //  br.close();
+        }
+        else {
+        	 path1 = new Path("/user/root/output/results_5_1_1/part1/part-r-000"+i);
+        	 BufferedReader bufferedReader1 = new BufferedReader(new InputStreamReader(fileSystem.open(path1)));
+        	 //BufferedWriter br=new BufferedWriter(new OutputStreamWriter(fileSystem.create(path2, true)));
+        	 String line;
+        	 while ((line = bufferedReader1.readLine()) != null){
+             String lin[] = line.split("\t");
+        	 double percen = (Integer.parseInt(lin[1])/total)*100;
+        	 lin[1] = Double.toString(percen).substring(0, 5);
+        	 br.write(lin[0]+"\t"+lin[1]+"\n");
+        	 }
+             
+        }
        }
         br.close();
-        
      }        
    }

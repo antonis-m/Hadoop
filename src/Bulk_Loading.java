@@ -45,8 +45,9 @@ public class Bulk_Loading{
 				m.reset();
 				m.update(title.getBytes());
 				byte[] digest = m.digest();
+				
 				BigInteger bigInt = new BigInteger(1,digest);
-				String hashtext = bigInt.toString(16);
+				String hashtext = bigInt.toString(8);
 				hKey.set(hashtext.getBytes());
 				kv= new KeyValue(hKey.get(),SRV_COL_FAM,name,title.getBytes());
 				context.write(hKey, kv);
