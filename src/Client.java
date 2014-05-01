@@ -35,16 +35,16 @@ public class Client {
     
     Configuration config = HBaseConfiguration.create();
     HTable table = new HTable(config, "index");
-
-for (int j =0; j<50; j++){    
+    int counter=0;
+for (int j =0; j<10000; j++){    
     String to_check = list.get(rand.nextInt(1000));
     Get g = new Get(Bytes.toBytes(to_check));
     Result r = table.get(g);
-    if (r.isEmpty())
-    	System.out.println("Doesn't exist\n");
-    else
-    	System.out.println("Exists\n");
-}
+    if (!r.isEmpty())
+    	counter++;
+    	}
+	int total = counter/100;
+	System.out.println("Successful queries = " + total + "%");
     table.close();
 
   }
