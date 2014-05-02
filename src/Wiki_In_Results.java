@@ -130,7 +130,7 @@ public class Wiki_In_Results {
      public static class Reduce1 extends Reducer<Text, Text, Text, Text> {
     	 private static final Text zero = new Text("0");
     	 private static final Text exists = new Text("1");
-    	 private static Text keyword = new Text();
+    	 private Text keyword = new Text();
     	 public void reduce(Text key, Iterable<Text> values, Context context)
           throws IOException, InterruptedException {
     		 Set<String> list = new HashSet<String>();
@@ -153,8 +153,8 @@ public class Wiki_In_Results {
      } 
      
      public static class Map2 extends Mapper<LongWritable, Text, Text, Text>{
-    	 private static Text query_key = new Text();
-    	 private static Text exists = new Text();
+    	 private Text query_key = new Text();
+    	 private Text exists = new Text();
     	 public void map(LongWritable key, Text value, Context context) 
     			 throws IOException, InterruptedException{
     		 	 String line[] = value.toString().split("\t");
@@ -166,7 +166,7 @@ public class Wiki_In_Results {
      }
 
      public static class Reduce2 extends Reducer<Text, Text, Text, IntWritable> { 
-    	 private static Text Q = new Text();
+    	 private Text Q = new Text();
     	 private static IntWritable total = new IntWritable();
     	 public void reduce(Text key, Iterable<Text> values, Context context)
           throws IOException, InterruptedException {
