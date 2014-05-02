@@ -105,10 +105,10 @@ public class Succesful_Search {
         unsuccessful = (unsuccessful/total)*100;
         
         BufferedWriter br=new BufferedWriter(new OutputStreamWriter(fileSystem.create(path2, true)));  
-        String line = "successful as percentage " + successful + "%.";
+        String line = "successful as percentage " + Double.toString(successful).substring(0, 4) + "%.";
         br.write(line);
         br.write("\n");
-        String line2= "unsuccessful as percentage " + unsuccessful +"%.";
+        String line2= "unsuccessful as percentage " + Double.toString(unsuccessful).substring(0, 4) +"%.";
         br.write(line2);
         br.write("\n");
         br.close();
