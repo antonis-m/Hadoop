@@ -27,10 +27,11 @@ public class Pages_Users {
 
  
  public static class Reduce extends Reducer<Text, IntWritable, Text, IntWritable> { 
-     private static Hashtable<String, String> table = new Hashtable<String, String>();
+     //private /*static*/ Hashtable<String, String> table = new Hashtable<String, String>();
      private IntWritable Users = new IntWritable();
 	 public void reduce(Text key, Iterable<IntWritable> values, Context context)
           throws IOException, InterruptedException {
+		 	Hashtable<String, String> table = new Hashtable<String, String>();
 		 	int sum=0;
 		 	for (IntWritable val : values) {
                 if (table.containsKey(val))

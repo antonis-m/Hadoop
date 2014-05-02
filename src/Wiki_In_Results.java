@@ -1,15 +1,21 @@
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
-import java.util.ArrayList;
+//import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
+
+import org.apache.hadoop.filecache.DistributedCache;
 import org.apache.hadoop.fs.FileSystem;
 //import java.util.*;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.conf.*;
 import org.apache.hadoop.io.*;
 import org.apache.hadoop.mapreduce.*;
+//import org.apache.hadoop.mapreduce.Mapper.Context;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.MultipleInputs;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
@@ -21,13 +27,47 @@ public class Wiki_In_Results {
 	
  public static class Map_Wiki extends Mapper<LongWritable, Text, Text, Text> {
       private final static Text zero = new Text("0");
-      private Text word = new Text();        
+      private Text word = new Text();      
+      public static Set<String> stop_words = new HashSet<String>();
+      
+      @Override
+ 	 protected void setup(Context context) throws IOException, InterruptedException{
+ 		 Configuration conf = context.getConfiguration();
+ 		 try {
+ 	     String stopwordCacheName = new Path("/user/root/input/english.stop").getName();
+ 		 Path cacheFiles = DistributedCache.getLocalCacheFiles(conf)[0];		 
+ 		 if (null != cacheFiles) {
+ 		          if (cacheFiles.getName().equals(stopwordCacheName)) {		        	 
+ 		            loadStopWords(cacheFiles);
+ 		          }  		        
+ 		      } 
+ 	 } catch (IOException ioe) {
+ 	      System.out.println("IOException reading from distributed cache");
+ 	      System.out.println(ioe.toString());
+ 	    }
+ 	 }
+ 	
+ 	  void loadStopWords(Path cachePath) throws IOException {
+ 		    // note use of regular java.io methods here - this is a local file now
+ 		    BufferedReader wordReader = new BufferedReader(new FileReader(cachePath.toString()));
+ 		    try {		    	
+ 		    	String line;
+ 		    	while((line=wordReader.readLine()) != null ){
+ 		    		stop_words.add(line);
+ 		    	} 
+ 		    }finally {
+ 		    		wordReader.close();
+ 		    	}		    
+ 		  }
+      
         public void map(LongWritable key, Text value, Context context) 
         		throws IOException, InterruptedException {
         	String line[] = value.toString().split("_");
         	for (String s : line){
-        		word.set(s);
-        		context.write(word, zero);
+        		if (!stop_words.contains(s)){
+        			word.set(s);
+        			context.write(word, zero);
+        		}
         	}
         }
      }
@@ -35,6 +75,40 @@ public class Wiki_In_Results {
  public static class Map_Aol extends Mapper<LongWritable, Text, Text, Text>{
 	 private static Text query_key = new Text();
 	 private static Text word = new Text();
+	 public static Set<String> stop_words = new HashSet<String>();
+     
+     @Override
+	 protected void setup(Context context) throws IOException, InterruptedException{
+		 Configuration conf = context.getConfiguration();
+		 try {
+	     String stopwordCacheName = new Path("/user/root/input/english.stop").getName();
+		 Path cacheFiles = DistributedCache.getLocalCacheFiles(conf)[0];		 
+		 if (null != cacheFiles) {
+		          if (cacheFiles.getName().equals(stopwordCacheName)) {		        	 
+		            loadStopWords(cacheFiles);
+		          }  		        
+		      } 
+	 } catch (IOException ioe) {
+	      System.out.println("IOException reading from distributed cache");
+	      System.out.println(ioe.toString());
+	    }
+	 }
+	
+	  void loadStopWords(Path cachePath) throws IOException {
+		    // note use of regular java.io methods here - this is a local file now
+		    BufferedReader wordReader = new BufferedReader(new FileReader(cachePath.toString()));
+		    try {		    	
+		    	String line;
+		    	while((line=wordReader.readLine()) != null ){
+		    		stop_words.add(line);
+		    	} 
+		    }finally {
+		    		wordReader.close();
+		    	}		    
+		  }
+   
+	 
+	 
 	 public void map(LongWritable key, Text value, Context context) 
 			 throws IOException, InterruptedException{
 		 String line[] = value.toString().split("\t");
@@ -44,8 +118,10 @@ public class Wiki_In_Results {
 		 String timestamp = timedate[0]+"_"+timedate[1];
 		 query_key.set(line[0]+"_"+timestamp);
 		 for (String s : keywords){
-			 word.set(s);
-			 context.write(word, query_key);
+			 if(!stop_words.contains(s)){
+				 word.set(s);
+			 	context.write(word, query_key);
+			 }
 		 }
 		}
 	 }
@@ -57,7 +133,8 @@ public class Wiki_In_Results {
     	 private static Text keyword = new Text();
     	 public void reduce(Text key, Iterable<Text> values, Context context)
           throws IOException, InterruptedException {
-    		 ArrayList<String> list = new ArrayList<String>();
+    		 Set<String> list = new HashSet<String>();
+    		 //ArrayList<String> list = new ArrayList<String>();
     		 for (Text val: values)
     			 list.add(val.toString());
     		 
@@ -121,12 +198,15 @@ public class Wiki_In_Results {
         job.setOutputValueClass(Text.class);        
         job.setReducerClass(Reduce1.class);
         
+        Path hdfsPath = new Path("/user/root/input/english.stop");
+        DistributedCache.addCacheFile(hdfsPath.toUri(), job.getConfiguration());
+        
         MultipleInputs.addInputPath(job, new Path(args[0]), TextInputFormat.class, Map_Wiki.class);
         MultipleInputs.addInputPath(job, new Path(args[1]), TextInputFormat.class, Map_Aol.class);
         job.setOutputFormatClass(TextOutputFormat.class);                
         FileOutputFormat.setOutputPath(job, new Path(args[2]));        
         job.waitForCompletion(true);
-        
+       
         Job job2 = new Job(conf, "wiki_in_results");
 
         job2.setJarByClass(Wiki_In_Results.class);
@@ -144,8 +224,8 @@ public class Wiki_In_Results {
         job2.waitForCompletion(true);
         
         
-        Path path1 = new Path("/user/root/output/results_9/part2/part-r-00000");
-        Path path2 = new Path("/user/root/output/results_9/part2/part-r-00001");
+        Path path1 = new Path("/user/root/output/results_10/part2/part-r-00000");
+        Path path2 = new Path("/user/root/output/results_10/part2/part-r-00001");
         FileSystem fileSystem = FileSystem.get(new Configuration());
         BufferedReader bufferedReader1 = new BufferedReader(new InputStreamReader(fileSystem.open(path1)));
         BufferedReader bufferedReader2 = new BufferedReader(new InputStreamReader(fileSystem.open(path2)));
@@ -161,6 +241,6 @@ public class Wiki_In_Results {
         BufferedWriter br=new BufferedWriter(new OutputStreamWriter(fileSystem.create(path1, true)));
         br.write("Successful Queries as percentage "+successful_per + " "+"%\n");
         br.write("Unsuccessful Queries as percentage "+unsuccessful_per + " "+"%\n");
-        br.close();
+        br.close(); 
      }        
    }
